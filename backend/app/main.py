@@ -1,7 +1,32 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from contextlib import asynccontextmanager
+import os
+import logging
 
-app = FastAPI(title="Mono-Grant-OS API", version="0.1.0")
+# Setup logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Run database migrations on startup
+    try:
+        from alembic.config import Config
+        from alembic import command
+        
+        # Only run if we have a database URL configured
+        if os.getenv("DATABASE_URL"):
+            logger.info("Running database migrations...")
+            alembic_cfg = Config("alembic.ini")
+            command.upgrade(alembic_cfg, "head")
+            logger.info("Database migrations complete.")
+    except Exception as e:
+        logger.error(f"Migration failed: {e}")
+    
+    yield
+
+app = FastAPI(title="Mono-Grant-OS API", version="0.1.0", lifespan=lifespan)
 
 import os
 
