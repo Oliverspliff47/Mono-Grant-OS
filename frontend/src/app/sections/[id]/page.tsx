@@ -58,11 +58,11 @@ export default function SectionPage({ params }: { params: Promise<{ id: string }
         if (!section) return;
         setError(null);
         try {
-            let updated;
+            let updated: Section | undefined;
             if (action === 'submit') updated = await submitSection(section.id);
             if (action === 'approve') updated = await approveSection(section.id);
             if (action === 'reject') updated = await rejectSection(section.id);
-            setSection(updated);
+            if (updated) setSection(updated);
         } catch (e: unknown) {
             setError(e instanceof Error ? e.message : "Unknown error");
         }
