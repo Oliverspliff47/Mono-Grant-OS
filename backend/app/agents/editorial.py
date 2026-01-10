@@ -74,21 +74,45 @@ class EditorialAgent:
             await self.db.refresh(section)
         return section
 
-    async def lock_section(self, section_id: uuid.UUID) -> tuple[Section, list[str]]:
-        """Attempt to lock a section. Returns (section, errors)."""
+    async def submit_for_review(self, section_id: uuid.UUID) -> Section:
+        """Transition DRAFT -> REVIEW."""
+        section = await self.get_section(section_id)
+        if section and section.status == SectionStatus.DRAFT:
+            section.status = SectionStatus.REVIEW
+            await self.db.commit()
+            await self.db.refresh(section)
+        return section
+
+    async def approve_section(self, section_id: uuid.UUID) -> tuple[Section, list[str]]:
+        """Transition REVIEW -> LOCKED. Replaces direct lock."""
         section = await self.get_section(section_id)
         if not section:
             return None, ["Section not found"]
-
-        # Run consistency checks
-        errors = self._run_checks(section)
         
+        # Only allow approval from REVIEW state? or DRAFT too?
+        # Let's enforce Review -> Locked for this workflow, but maybe allow Draft -> Locked as shortcut if needed.
+        # For now, let's allow it from any non-locked state.
+        
+        errors = self._run_checks(section)
         if not errors:
             section.status = SectionStatus.LOCKED
             await self.db.commit()
             await self.db.refresh(section)
         
         return section, errors
+
+    async def reject_section(self, section_id: uuid.UUID) -> Section:
+        """Transition REVIEW -> DRAFT."""
+        section = await self.get_section(section_id)
+        if section and section.status == SectionStatus.REVIEW:
+            section.status = SectionStatus.DRAFT
+            await self.db.commit()
+            await self.db.refresh(section)
+        return section
+
+    async def lock_section(self, section_id: uuid.UUID) -> tuple[Section, list[str]]:
+        """Legacy lock method, aliasing approve for now or direct lock."""
+        return await self.approve_section(section_id)
 
     def _run_checks(self, section: Section) -> list[str]:
         """Internal consistency checks."""

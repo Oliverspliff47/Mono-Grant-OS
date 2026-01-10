@@ -66,14 +66,40 @@ async def update_section_content(section_id: UUID, section_in: SectionUpdate, db
         raise HTTPException(status_code=404, detail="Section not found")
     return section
 
+@router.post("/sections/{section_id}/submit", response_model=SectionResponse)
+async def submit_section(section_id: UUID, db: AsyncSession = Depends(get_db)):
+    agent = EditorialAgent(db)
+    section = await agent.submit_for_review(section_id)
+    if not section:
+        raise HTTPException(status_code=404, detail="Section not found or invalid state transition")
+    return section
+
+@router.post("/sections/{section_id}/approve", response_model=SectionResponse)
+async def approve_section(section_id: UUID, db: AsyncSession = Depends(get_db)):
+    agent = EditorialAgent(db)
+    section, errors = await agent.approve_section(section_id)
+    if not section:
+         raise HTTPException(status_code=404, detail="Section not found")
+    if errors:
+        raise HTTPException(status_code=400, detail={"message": "Consistency checks failed", "errors": errors})
+    return section
+
+@router.post("/sections/{section_id}/reject", response_model=SectionResponse)
+async def reject_section(section_id: UUID, db: AsyncSession = Depends(get_db)):
+    agent = EditorialAgent(db)
+    section = await agent.reject_section(section_id)
+    if not section:
+        raise HTTPException(status_code=404, detail="Section not found")
+    return section
+
+# Legacy lock endpoint - keep for backward compatibility or remove? 
+# Keeping it pointing to approve logic via agent.lock_section alias
 @router.post("/sections/{section_id}/lock", response_model=SectionResponse)
 async def lock_section(section_id: UUID, db: AsyncSession = Depends(get_db)):
     agent = EditorialAgent(db)
     section, errors = await agent.lock_section(section_id)
     if not section:
          raise HTTPException(status_code=404, detail="Section not found")
-    if errors:
-        raise HTTPException(status_code=400, detail={"message": "Consistency checks failed", "errors": errors})
     if errors:
         raise HTTPException(status_code=400, detail={"message": "Consistency checks failed", "errors": errors})
     return section

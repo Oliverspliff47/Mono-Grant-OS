@@ -13,7 +13,17 @@ if DATABASE_URL and DATABASE_URL.startswith("postgresql://"):
 if not DATABASE_URL:
     DATABASE_URL = "sqlite+aiosqlite:///./mono_grant.db"
 
-engine = create_async_engine(DATABASE_URL, echo=True)
+# Production tuning
+is_production = os.getenv("RAILWAY_ENVIRONMENT", "production") == "production"
+echo_sql = os.getenv("ECHO_SQL", "False").lower() == "true"
+
+engine = create_async_engine(
+    DATABASE_URL,
+    echo=echo_sql,
+    pool_size=int(os.getenv("DB_POOL_SIZE", 20)),
+    max_overflow=int(os.getenv("DB_MAX_OVERFLOW", 10)),
+    pool_pre_ping=True,  # Check connection health before usage
+)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine, class_=AsyncSession)
 
 Base = declarative_base()

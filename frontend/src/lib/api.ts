@@ -98,6 +98,36 @@ export async function updateSection(sectionId: string, content: string): Promise
     return await res.json();
 }
 
+return await res.json();
+}
+
+export async function submitSection(sectionId: string): Promise<Section> {
+    const res = await fetch(`${API_BASE_URL}/sections/${sectionId}/submit`, {
+        method: "POST",
+    });
+    if (!res.ok) throw new Error("Failed to submit section");
+    return await res.json();
+}
+
+export async function approveSection(sectionId: string): Promise<Section> {
+    const res = await fetch(`${API_BASE_URL}/sections/${sectionId}/approve`, {
+        method: "POST",
+    });
+    if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.detail?.message || "Failed to approve section");
+    }
+    return await res.json();
+}
+
+export async function rejectSection(sectionId: string): Promise<Section> {
+    const res = await fetch(`${API_BASE_URL}/sections/${sectionId}/reject`, {
+        method: "POST",
+    });
+    if (!res.ok) throw new Error("Failed to reject section");
+    return await res.json();
+}
+
 export async function lockSection(sectionId: string): Promise<Section> {
     const res = await fetch(`${API_BASE_URL}/sections/${sectionId}/lock`, {
         method: "POST",
@@ -215,6 +245,17 @@ export async function updateApplication(appId: string, data: { narrative_draft?:
     });
     if (!res.ok) throw new Error("Failed to update application");
     return await res.json();
+}
+
+export async function getApplication(appId: string): Promise<ApplicationPackage | null> {
+    try {
+        const res = await fetch(`${API_BASE_URL}/applications/${appId}`);
+        if (!res.ok) return null;
+        return await res.json();
+    } catch (e) {
+        console.error("Failed to fetch application", e);
+        return null;
+    }
 }
 
 // Dashboard Stats interface for typing

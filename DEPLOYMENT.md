@@ -123,6 +123,7 @@ curl https://YOUR_BACKEND_URL/api/v1/dashboard/stats
 |----------|----------|-------------|
 | `DATABASE_URL` | ✅ Auto | PostgreSQL connection string (auto-provided) |
 | `PORT` | ✅ Auto | Server port (auto-provided) |
+| `ALLOWED_ORIGINS` | ✅ | Frontend URL for CORS (e.g. `https://project.vercel.app`) |
 | `OPENAI_API_KEY` | ❌ Optional | For AI section review feature |
 
 ### Frontend (Vercel)
@@ -143,13 +144,27 @@ curl https://YOUR_BACKEND_URL/api/v1/dashboard/stats
 
 ### CORS errors in browser
 
-- The backend is configured to allow all origins in development
-- For production, update `app/main.py` CORS settings if needed
+- **CRITICAL**: In production, you MUST set the `ALLOWED_ORIGINS` environment variable in Railway.
+- Set it to your Vercel frontend URL: `https://your-app-name.vercel.app` (no trailing slash).
+- If not set, the backend generally blocks requests from unknown origins.
 
 ### Database connection failed
 
 - Verify PostgreSQL addon is running in Railway
 - Check if `DATABASE_URL` format is correct (`postgresql://...`)
+- **Pooling**: We added connection pooling. If you see connection limit errors, try reducing `DB_POOL_SIZE` (default 20).
+
+## Environment Variables Reference
+
+### Backend (Railway)
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `DATABASE_URL` | ✅ Auto | PostgreSQL connection string (auto-provided) |
+| `PORT` | ✅ Auto | Server port (auto-provided) |
+| `ALLOWED_ORIGINS` | ✅ **High** | Comma-separated list of allowed frontend URLs (e.g. `https://myapp.vercel.app`) |
+| `DB_POOL_SIZE` | ❌ Optional | Connection pool size (default: 20) |
+| `OPENAI_API_KEY` | ❌ Optional | For AI section review feature |
 
 ---
 

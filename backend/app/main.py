@@ -3,10 +3,15 @@ from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI(title="Mono-Grant-OS API", version="0.1.0")
 
-# CORS - Allow multiple origins for development and production
+import os
+
+# CORS - Allow multiple origins for development, restrict in production
+origins_str = os.getenv("ALLOWED_ORIGINS", "*")
+origins = [origin.strip() for origin in origins_str.split(",") if origin.strip()]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Allow all origins for now, restrict in production
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

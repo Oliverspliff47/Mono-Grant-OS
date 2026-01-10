@@ -1,19 +1,11 @@
 "use client";
 
 import { useEffect, useState, use } from "react";
-import { updateApplication, ApplicationPackage } from "@/lib/api";
+import { updateApplication, getApplication, ApplicationPackage } from "@/lib/api";
 import Link from "next/link";
 import { ArrowLeft, Save, Loader2 } from "lucide-react";
 
-// Hacky fetch since I don't have getApplication by ID exposed nicely yet or I can fake it?
-// I only exposed createApplication and updateApplication.
-// I should add getApplication to backend or at least GET /applications/{id}
-// Let's assume I added GET /applications/{id} implicitly or I will add it now.
-// Actually, I missed adding GET /applications/{id} in backend endpoints.
-// I added POST /applications and PUT /applications/{id}.
-// I need GET /applications/{id} to load this page!
-// I will assume I will add it in next step or use what I have. 
-// Let's create the page and then fix the backend.
+
 
 export default function ApplicationPage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = use(params);
@@ -23,15 +15,10 @@ export default function ApplicationPage({ params }: { params: Promise<{ id: stri
     const [saving, setSaving] = useState(false);
 
     useEffect(() => {
-        // Fetch application by ID
-        // Since I forgot the endpoint, I'll stick a placeholder fetch here
-        // and ensure I add the endpoint in the next Backend tool call.
         async function load() {
             try {
-                // Temporary: using the same endpoint pattern
-                const res = await fetch(`http://localhost:8000/api/v1/applications/${id}`);
-                if (res.ok) {
-                    const data = await res.json();
+                const data = await getApplication(id);
+                if (data) {
                     setApp(data);
                     setNarrative(data.narrative_draft || "");
                 }
@@ -54,7 +41,7 @@ export default function ApplicationPage({ params }: { params: Promise<{ id: stri
     };
 
     if (loading) return <div>Loading Application...</div>;
-    if (!app) return <div>Application not found (Did you forget to add the GET endpoint?)</div>;
+    if (!app) return <div>Application not found</div>;
 
     return (
         <div className="flex h-full flex-col space-y-6">
