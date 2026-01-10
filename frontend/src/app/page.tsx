@@ -20,10 +20,12 @@ export default function DashboardPage() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const [error, setError] = useState<string | null>(null);
+
   useEffect(() => {
     getDashboardStats()
       .then((data) => setStats(data as DashboardStats))
-      .catch((e) => console.error(e))
+      .catch((e) => setError(e instanceof Error ? e.message : "Unknown error"))
       .finally(() => setLoading(false));
   }, []);
 
@@ -36,7 +38,8 @@ export default function DashboardPage() {
     );
   }
 
-  if (!stats) return <div className="text-stone-500 text-center p-12">Failed to load dashboard data.</div>;
+  if (error) return <div className="text-red-500 text-center p-12">Error: {error}</div>;
+  if (!stats) return <div className="text-stone-500 text-center p-12">No data available.</div>;
 
   return (
     <div className="space-y-8">
