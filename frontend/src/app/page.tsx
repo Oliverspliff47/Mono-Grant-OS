@@ -76,7 +76,7 @@ export default function DashboardPage() {
           <div className="flex items-center justify-between relative z-10">
             <div>
               <p className="text-sm font-medium text-stone-400">Total Projects</p>
-              <h3 className="text-3xl font-bold text-white mt-1">{stats.counts.projects}</h3>
+              <h3 className="text-3xl font-bold text-white mt-1">{stats.counts?.projects || 0}</h3>
             </div>
             <Folder className="h-8 w-8 text-indigo-500/80" />
           </div>
@@ -90,7 +90,7 @@ export default function DashboardPage() {
           <div className="flex items-center justify-between relative z-10">
             <div>
               <p className="text-sm font-medium text-stone-400">Active Grants</p>
-              <h3 className="text-3xl font-bold text-white mt-1">{stats.counts.opportunities}</h3>
+              <h3 className="text-3xl font-bold text-white mt-1">{stats.counts?.opportunities || 0}</h3>
             </div>
             <Banknote className="h-8 w-8 text-emerald-500/80" />
           </div>
@@ -104,7 +104,7 @@ export default function DashboardPage() {
           <div className="flex items-center justify-between relative z-10">
             <div>
               <p className="text-sm font-medium text-stone-400">Total Assets</p>
-              <h3 className="text-3xl font-bold text-white mt-1">{stats.counts.assets}</h3>
+              <h3 className="text-3xl font-bold text-white mt-1">{stats.counts?.assets || 0}</h3>
             </div>
             <Database className="h-8 w-8 text-amber-500/80" />
           </div>
