@@ -17,13 +17,12 @@ import {
 import { cn } from "@/lib/utils";
 
 export default function DashboardPage() {
-  const [stats, setStats] = useState<DashboardStats | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     getDashboardStats()
       .then((data) => setStats(data as DashboardStats))
-      .catch((e) => console.error(e))
+      .catch((e) => setError(e instanceof Error ? e.message : "Unknown error"))
       .finally(() => setLoading(false));
   }, []);
 
@@ -36,7 +35,23 @@ export default function DashboardPage() {
     );
   }
 
-  if (!stats) return <div className="text-stone-500 text-center p-12">Failed to load dashboard data.</div>;
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center p-12 text-center text-red-500 gap-2">
+        <AlertCircle className="h-8 w-8 mb-2" />
+        <h3 className="font-bold">Connection Failed</h3>
+        <p>{error}</p>
+        <div className="mt-4 p-4 bg-stone-900 rounded-lg max-w-md w-full overflow-hidden">
+          <p className="text-xs text-stone-500 mb-1 uppercase tracking-wider">Debug Info</p>
+          <p className="text-sm font-mono text-stone-300 break-all">
+            Target: {process.env.NEXT_PUBLIC_API_URL || "UNDEFINED (Using Localhost)"}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!stats) return <div className="text-stone-500 text-center p-12">No data available.</div>;
 
   return (
     <div className="space-y-8">
