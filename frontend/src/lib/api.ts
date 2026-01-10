@@ -98,8 +98,7 @@ export async function updateSection(sectionId: string, content: string): Promise
     return await res.json();
 }
 
-return await res.json();
-}
+
 
 export async function submitSection(sectionId: string): Promise<Section> {
     const res = await fetch(`${API_BASE_URL}/sections/${sectionId}/submit`, {
