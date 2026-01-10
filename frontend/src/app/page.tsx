@@ -38,7 +38,19 @@ export default function DashboardPage() {
     );
   }
 
-  if (error) return <div className="text-red-500 text-center p-12">Error: {error}</div>;
+  if (error) {
+    return (
+      <div className="text-red-500 text-center p-12 flex flex-col gap-2">
+        <p className="font-bold">Error: {error}</p>
+        <p className="text-sm text-stone-500">
+          Trying to connect to:
+          <code className="ml-2 bg-stone-800 px-2 py-1 rounded text-stone-300">
+            {process.env.NEXT_PUBLIC_API_URL || "UNDEFINED (Defaults to localhost)"}
+          </code>
+        </p>
+      </div>
+    );
+  }
   if (!stats) return <div className="text-stone-500 text-center p-12">No data available.</div>;
 
   return (
