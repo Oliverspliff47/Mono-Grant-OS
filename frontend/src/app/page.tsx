@@ -20,12 +20,10 @@ export default function DashboardPage() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const [error, setError] = useState<string | null>(null);
-
   useEffect(() => {
     getDashboardStats()
       .then((data) => setStats(data as DashboardStats))
-      .catch((e) => setError(e instanceof Error ? e.message : "Unknown error"))
+      .catch((e) => console.error(e))
       .finally(() => setLoading(false));
   }, []);
 
@@ -38,20 +36,7 @@ export default function DashboardPage() {
     );
   }
 
-  if (error) {
-    return (
-      <div className="text-red-500 text-center p-12 flex flex-col gap-2">
-        <p className="font-bold">Error: {error}</p>
-        <p className="text-sm text-stone-500">
-          Trying to connect to:
-          <code className="ml-2 bg-stone-800 px-2 py-1 rounded text-stone-300">
-            {process.env.NEXT_PUBLIC_API_URL || "UNDEFINED (Defaults to localhost)"}
-          </code>
-        </p>
-      </div>
-    );
-  }
-  if (!stats) return <div className="text-stone-500 text-center p-12">No data available.</div>;
+  if (!stats) return <div className="text-stone-500 text-center p-12">Failed to load dashboard data.</div>;
 
   return (
     <div className="space-y-8">
