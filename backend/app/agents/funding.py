@@ -23,13 +23,8 @@ class FundingAgent:
         """
         api_key = os.getenv("GEMINI_API_KEY")
         if not api_key:
-            return [{
-                "funder_name": "DEBUG_ERROR",
-                "programme_name": "Error: GEMINI_API_KEY not set in environment",
-                "deadline_estimate": "2026",
-                "description": "Please check Railway variables",
-                "source_url": ""
-            }]
+            print("GEMINI_API_KEY not set, falling back to empty results")
+            return []
         
         try:
             # Use Gemini with search grounding for deep research
@@ -98,14 +93,7 @@ Return the results as a JSON array."""
             print(f"Gemini research error: {e}")
             import traceback
             traceback.print_exc()
-            # DEBUG: Return error as result
-            return [{
-                "funder_name": "DEBUG_ERROR",
-                "programme_name": f"Error: {str(e)}",
-                "deadline_estimate": "2026",
-                "description": "Debug error message",
-                "source_url": ""
-            }]
+            return []
 
 
     async def research_and_create_opportunities(self, query: str = "film documentary arts grants", region: str = "South Africa") -> list[FundingOpportunity]:
