@@ -7,6 +7,7 @@ import json
 import re
 import os
 import google.generativeai as genai
+from duckduckgo_search import DDGS
 
 class FundingAgent:
     def __init__(self, db_session: AsyncSession):
@@ -18,81 +19,69 @@ class FundingAgent:
 
     async def research_opportunities(self, query: str = "film documentary arts grants funding", region: str = "South Africa") -> list[dict]:
         """
-        Deep research to find funding opportunities using Gemini AI with grounded search.
-        Returns a list of discovered opportunities.
+        Deep research using Hybrid approach:
+        1. Search via DuckDuckGo (Free, Unlimited)
+        2. Parse & Extract via Gemini Flash (Free Tier Friendly)
         """
         api_key = os.getenv("GEMINI_API_KEY")
         if not api_key:
-            print("GEMINI_API_KEY not set, falling back to empty results")
+            print("GEMINI_API_KEY not set")
             return []
+            
+        print(f"Hybrid Research: Searching for '{query}' in '{region}'...")
         
+        # Step 1: Free Web Search
+        search_results = []
         try:
-            # Use Gemini with search grounding for deep research
-            model = genai.GenerativeModel(
-                model_name="gemini-2.0-flash",
-                system_instruction="""You are a funding research specialist. Your task is to find real, current funding opportunities for filmmakers, documentarians, and artists.
-
-When researching, look for:
-- Government arts councils and cultural funds
-- Private foundations supporting film/documentary
-- International film funds
-- Arts grants and fellowships
-- Documentary-specific funding programs
-
-For each opportunity found, extract:
-1. Funder name (organization providing the funding)
-2. Programme name (specific grant or fund name)
-3. Deadline if known (or estimate "Q1/Q2/Q3/Q4 2026" if unclear)
-4. Brief description
-
-Return your findings as a JSON array with objects containing: funder_name, programme_name, deadline_estimate, description, source_url (if known)
-
-Be thorough and find at least 5-10 relevant opportunities. Focus on currently active programs."""
-            )
-            
-            # Enable search grounding for real-time web research
-            research_prompt = f"""Research current funding opportunities for: {query}
-
-Focus on region: {region}
-
-Search for active grants, funds, and fellowships that filmmakers, documentarians, and artists can apply to in 2026.
-
-Find real opportunities with actual deadlines and application processes. Include both local ({region}) and international opportunities that accept applications from {region}.
-
-Return the results as a JSON array."""
-
-            response = model.generate_content(
-                research_prompt,
-                tools="google_search_retrieval"
-            )
-            
-            # Parse the response
-            response_text = response.text
-            
-            # Extract JSON from response
-            json_match = re.search(r'\[[\s\S]*\]', response_text)
-            if json_match:
-                results = json.loads(json_match.group())
+            with DDGS() as ddgs:
+                full_query = f"{query} {region} grants funding opportunities 2026 application"
+                # Get more results to ensure content
+                ddg_results = list(ddgs.text(full_query, max_results=8))
                 
-                # Normalize the results
-                normalized = []
-                for item in results:
-                    normalized.append({
-                        "funder_name": str(item.get("funder_name", item.get("funder", "Unknown")))[:100],
-                        "programme_name": str(item.get("programme_name", item.get("programme", item.get("name", "Grant Program"))))[:200],
-                        "deadline_estimate": str(item.get("deadline_estimate", item.get("deadline", "2026")))[:50],
-                        "description": str(item.get("description", ""))[:500],
-                        "source_url": str(item.get("source_url", item.get("url", "")))[:500]
-                    })
-                return normalized
-            else:
-                print(f"Could not parse JSON from Gemini response: {response_text[:500]}")
-                return []
-                
+                context_text = ""
+                for r in ddg_results:
+                    context_text += f"\nSOURCE: {r['title']}\nURL: {r['href']}\nCONTENT: {r['body']}\n"
+                    search_results.append(r)
+                    
         except Exception as e:
-            print(f"Gemini research error: {e}")
-            import traceback
-            traceback.print_exc()
+            print(f"DuckDuckGo Search failed: {e}")
+            return []
+
+        if not context_text:
+            return []
+
+        # Step 2: Intelligent Extraction with Gemini
+        try:
+            model = genai.GenerativeModel("gemini-2.0-flash")
+            
+            prompt = f"""You are an expert funding researcher. I will provide search results for funding opportunities.
+            
+            Your job is to extract REAL funding opportunities from the text below.
+            Ignore generic listicles unless they name specific grants.
+            
+            SEARCH CONTEXT:
+            {context_text}
+            
+            INSTRUCTIONS:
+            Extract at least 3-5 distinct opportunities.
+            For each, provide:
+            - funder_name
+            - programme_name
+            - deadline_estimate (e.g. "Late 2026", "Open", "April 15")
+            - description (summary of what it funds)
+            - source_url (the specific URL from the source)
+            
+            Return strictly a JSON array of objects. No markdown formatting.
+            """
+            
+            response = model.generate_content(prompt)
+            clean_text = response.text.strip().replace("```json", "").replace("```", "")
+            
+            data = json.loads(clean_text)
+            return data
+
+        except Exception as e:
+            print(f"Gemini Extraction failed: {e}")
             return []
 
 
