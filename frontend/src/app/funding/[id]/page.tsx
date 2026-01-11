@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 
 export default function ApplicationPage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = use(params);
-    const [app, setApp] = useState<ApplicationPackage | null>(null);
+    const [app, setApp] = useState<(ApplicationPackage & { opportunity?: any }) | null>(null);
     const [narrative, setNarrative] = useState("");
     const [budgetJson, setBudgetJson] = useState("{}");
     const [loading, setLoading] = useState(true);
@@ -91,8 +91,9 @@ export default function ApplicationPage({ params }: { params: Promise<{ id: stri
                         <ArrowLeft className="h-6 w-6" />
                     </Link>
                     <div>
-                        <h1 className="text-2xl font-bold text-white">Application Draft</h1>
-                        <div className="flex items-center gap-3 mt-1">
+                        <h1 className="text-2xl font-bold text-white">{app.opportunity?.programme_name || "Application Draft"}</h1>
+                        <p className="text-sm text-stone-400">{app.opportunity?.funder_name}</p>
+                        <div className="flex items-center gap-3 mt-2">
                             <span className={cn(
                                 "flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium",
                                 status.color
@@ -100,6 +101,16 @@ export default function ApplicationPage({ params }: { params: Promise<{ id: stri
                                 {status.icon}
                                 {app.submission_status}
                             </span>
+                            {app.opportunity?.deadline && (
+                                <span className={cn(
+                                    "flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium border",
+                                    new Date(app.opportunity.deadline) < new Date() ? "border-red-500/50 text-red-500" :
+                                        new Date(app.opportunity.deadline) < new Date(Date.now() + 7 * 86400000) ? "border-amber-500/50 text-amber-500" :
+                                            "border-stone-700 text-stone-400"
+                                )}>
+                                    Due: {new Date(app.opportunity.deadline).toLocaleDateString()}
+                                </span>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -150,17 +161,40 @@ Include:
 
                 {/* Budget Panel */}
                 <div className="flex flex-col rounded-xl border border-stone-800 bg-stone-900 overflow-hidden">
-                    <div className="bg-stone-950 px-4 py-3 border-b border-stone-800 flex items-center gap-2">
-                        <DollarSign className="h-4 w-4 text-stone-500" />
-                        <span className="text-sm font-medium text-stone-300">Budget (JSON)</span>
+                    <div className="bg-stone-950 px-4 py-3 border-b border-stone-800 flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                            <DollarSign className="h-4 w-4 text-stone-500" />
+                            <span className="text-sm font-medium text-stone-300">Budget Builder</span>
+                        </div>
+                        <span className="text-xs font-mono text-stone-500">
+                            Total: ${Object.values(JSON.parse(budgetJson || "{}")).reduce((a: any, b: any) => a + (Number(b) || 0), 0).toLocaleString()}
+                        </span>
                     </div>
-                    <textarea
-                        className="flex-1 bg-transparent p-4 text-stone-200 resize-none focus:outline-none font-mono text-sm leading-relaxed disabled:opacity-50"
-                        value={budgetJson}
-                        onChange={(e) => setBudgetJson(e.target.value)}
-                        placeholder='{\n  "personnel": 0,\n  "equipment": 0,\n  "travel": 0,\n  "other": 0\n}'
-                        disabled={app.submission_status !== "Draft"}
-                    />
+                    <div className="flex-1 p-4 space-y-4 overflow-y-auto">
+                        {["personnel", "equipment", "travel", "other"].map((category) => {
+                            const currentBudget = JSON.parse(budgetJson || "{}");
+                            return (
+                                <div key={category} className="flex flex-col gap-1">
+                                    <label className="text-xs font-medium text-stone-500 uppercase tracking-wider">{category}</label>
+                                    <div className="relative">
+                                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-500">$</span>
+                                        <input
+                                            type="number"
+                                            className="w-full bg-stone-950 border border-stone-800 rounded-md py-2 pl-7 pr-3 text-sm text-stone-200 focus:outline-none focus:border-stone-600 disabled:opacity-50"
+                                            value={currentBudget[category] || ""}
+                                            onChange={(e) => {
+                                                const val = parseFloat(e.target.value) || 0;
+                                                const newBudget = { ...currentBudget, [category]: val };
+                                                setBudgetJson(JSON.stringify(newBudget));
+                                            }}
+                                            disabled={app.submission_status !== "Draft"}
+                                            placeholder="0.00"
+                                        />
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
                 </div>
             </div>
         </div>

@@ -216,6 +216,7 @@ export interface ApplicationPackage {
     budget_json: Record<string, unknown> | null;
     submission_status: "Draft" | "Approved" | "Submitted";
     final_approval: boolean;
+    opportunity?: Opportunity;
 }
 
 export async function createOpportunity(data: { funder_name: string; programme_name: string; deadline: string }): Promise<Opportunity> {
@@ -298,13 +299,9 @@ export async function getApplication(appId: string): Promise<ApplicationPackage 
 // Dashboard Stats interface for typing
 export interface DashboardStats {
     counts: {
-        projects: number;
         opportunities: number;
-        assets: number;
     };
-    recent_projects: Project[];
     upcoming_deadlines: Opportunity[];
-    recent_assets: Asset[];
 }
 
 export async function getDashboardStats(): Promise<DashboardStats> {

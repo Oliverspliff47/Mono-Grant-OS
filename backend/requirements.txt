@@ -18,3 +18,4 @@ beautifulsoup4
 requests
 pypdf
 python-multipart
+aiosqlite
