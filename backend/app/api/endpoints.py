@@ -45,7 +45,7 @@ async def clear_all_projects(db: AsyncSession = Depends(get_db)):
     await db.execute(models.Asset.__table__.delete())
     await db.execute(models.Section.__table__.delete())
     await db.execute(models.ApplicationPackage.__table__.delete())
-    await db.execute(models.Opportunity.__table__.delete())
+    await db.execute(models.FundingOpportunity.__table__.delete())
     await db.execute(models.Project.__table__.delete())
     await db.commit()
     return None
