@@ -45,10 +45,22 @@ class FundingAgent:
                     
         except Exception as e:
             print(f"DuckDuckGo Search failed: {e}")
-            return []
+            return [{
+                "funder_name": "DEBUG_ERROR",
+                "programme_name": f"DDG Search Error: {str(e)}",
+                "deadline_estimate": "2026",
+                "description": "DuckDuckGo search failed",
+                "source_url": ""
+            }]
 
         if not context_text:
-            return []
+            return [{
+                "funder_name": "DEBUG_ERROR",
+                "programme_name": "Error: No search results found",
+                "deadline_estimate": "2026",
+                "description": "DuckDuckGo returned no results",
+                "source_url": ""
+            }]
 
         # Step 2: Intelligent Extraction with Gemini
         try:
@@ -82,7 +94,13 @@ class FundingAgent:
 
         except Exception as e:
             print(f"Gemini Extraction failed: {e}")
-            return []
+            return [{
+                "funder_name": "DEBUG_ERROR",
+                "programme_name": f"Gemini Extraction Error: {str(e)}",
+                "deadline_estimate": "2026",
+                "description": "Gemini failed to parse",
+                "source_url": ""
+            }]
 
 
     async def research_and_create_opportunities(self, query: str = "film documentary arts grants", region: str = "South Africa") -> list[FundingOpportunity]:
