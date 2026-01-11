@@ -122,38 +122,86 @@ class FundingAgent:
             return []
 
 
-    async def research_and_create_opportunities(self, query: str = "film documentary arts grants", region: str = "South Africa") -> list[FundingOpportunity]:
+    async def parse_opportunities_from_text(self, text: str) -> list[dict]:
         """
-        Research opportunities and automatically create them in the database.
-        Uses Gemini AI with grounded search for deep research.
+        Smart Import: Parse unstructured text (emails, chat logs, lists) into structured opportunities.
+        Uses Gemini Flash for intelligent extraction without search tools.
         """
-        research_results = await self.research_opportunities(query, region)
+        api_key = os.getenv("GEMINI_API_KEY")
+        if not api_key:
+            print("GEMINI_API_KEY not set")
+            return []
+            
+        print("Smart Import: Parsing raw text...")
+        
+        try:
+            model = genai.GenerativeModel("gemini-2.0-flash")
+            
+            prompt = f"""You are an expert funding data analyst.
+            
+            I am providing raw text that contains funding opportunities (e.g. from an email, chat log, or list).
+            Your job is to specific extract funding opportunities into a structured JSON array.
+            
+            RAW TEXT:
+            {text[:30000]}  # Limit context window just in case
+            
+            INSTRUCTIONS:
+            Extract every distinct funding opportunity found in the text.
+            For each, provide:
+            - funder_name
+            - programme_name
+            - deadline_estimate (e.g. "Late 2026", "Open", "April 15")
+            - description (summary of what it funds)
+            - source_url (if mentioned in the text, otherwise empty)
+            
+            If the text contains no opportunities, return an empty array [].
+            Return strictly a JSON array of objects. No markdown formatting.
+            """
+            
+            response = await asyncio.to_thread(model.generate_content, prompt)
+            clean_text = response.text.strip().replace("```json", "").replace("```", "")
+            
+            data = json.loads(clean_text)
+            return data
+
+        except Exception as e:
+            print(f"Gemini Text Parsing failed: {e}")
+            import traceback
+            traceback.print_exc()
+            return []
+
+    async def import_opportunities_from_text(self, text: str) -> list[FundingOpportunity]:
+        """
+        Import opportunities from raw text and persist them to the database.
+        """
+        parsed_results = await self.parse_opportunities_from_text(text)
         created = []
         
-        # Default deadline is 3 months from now
+        # Default deadline is 3 months from now if not specified
         default_deadline = date.today() + timedelta(days=90)
         
-        for result in research_results:
+        for result in parsed_results:
             # Check if similar opportunity already exists
             existing = await self.db.execute(
                 select(FundingOpportunity).where(
-                    FundingOpportunity.funder_name == result["funder_name"][:100]
+                    FundingOpportunity.funder_name == result.get("funder_name", "Unknown")[:100],
+                    FundingOpportunity.programme_name == result.get("programme_name", "General")[:200]
                 )
             )
             if existing.scalars().first():
                 continue  # Skip duplicates
             
             opportunity = FundingOpportunity(
-                funder_name=result["funder_name"][:100],
-                programme_name=result["programme_name"][:200],
-                deadline=default_deadline,
+                funder_name=result.get("funder_name", "Unknown")[:100],
+                programme_name=result.get("programme_name", "General")[:200],
+                deadline=default_deadline,  # In future, parsing logic could extract ISO dates
                 status=FundingStatus.TO_REVIEW,
                 eligibility_criteria={
                     "source": result.get("source_url", ""),
                     "description": result.get("description", ""),
                     "deadline_estimate": result.get("deadline_estimate", "")
                 },
-                budget_rules={"notes": "Sourced via Gemini AI research - verify details before applying"}
+                budget_rules={"notes": "Imported via Smart Import"}
             )
             self.db.add(opportunity)
             created.append(opportunity)

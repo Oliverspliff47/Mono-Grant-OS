@@ -163,6 +163,14 @@ async def research_opportunities(query: str = "film documentary arts grants", re
     created = await agent.research_and_create_opportunities(query, region)
     return created
 
+@router.post("/opportunities/import", response_model=List[OpportunityResponse])
+async def import_opportunities(payload: schemas.FundingImportRequest, db: AsyncSession = Depends(get_db)):
+    """
+    Import funding opportunities from raw text using Gemini AI parsing.
+    """
+    agent = FundingAgent(db)
+    return await agent.import_opportunities_from_text(payload.text)
+
 
 @router.post("/applications", response_model=ApplicationResponse, status_code=status.HTTP_201_CREATED)
 async def create_application(opportunity_id: UUID, db: AsyncSession = Depends(get_db)):

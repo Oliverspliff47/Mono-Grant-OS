@@ -8,11 +8,11 @@ API_URL = "https://mono-grant-os-production.up.railway.app/api/v1/opportunities/
 
 async def test_research():
     print(f"Testing Research API at: {API_URL}")
-    print("Query: arts grants")
+    print("Query: funding for publications about cultural production")
     print("Region: South Africa")
     
     params = {
-        "query": "arts grants",
+        "query": "funding for publications about cultural production",
         "region": "South Africa"
     }
     

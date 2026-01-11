@@ -242,6 +242,16 @@ export async function researchOpportunities(query: string = "film documentary ar
     return await res.json();
 }
 
+export async function importOpportunities(text: string): Promise<Opportunity[]> {
+    const res = await fetch(`${API_BASE_URL}/opportunities/import`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text }),
+    });
+    if (!res.ok) throw new Error("Import failed");
+    return await res.json();
+}
+
 
 export async function createApplication(opportunityId: string): Promise<ApplicationPackage> {
     const res = await fetch(`${API_BASE_URL}/applications?opportunity_id=${opportunityId}`, {

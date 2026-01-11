@@ -1,16 +1,16 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getOpportunities, createOpportunity, createApplication, researchOpportunities, Opportunity } from "@/lib/api";
-import { Plus, Calendar, ArrowRight, Search, Loader2, Sparkles } from "lucide-react";
+import { getOpportunities, createOpportunity, createApplication, importOpportunities, Opportunity } from "@/lib/api";
+import { Plus, Calendar, ArrowRight, Search, Loader2, Sparkles, ClipboardPaste } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 export default function FundingPage() {
     const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
-    const [isResearchModalOpen, setIsResearchModalOpen] = useState(false);
-    const [researching, setResearching] = useState(false);
+    const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+    const [importing, setImporting] = useState(false);
     const router = useRouter();
 
     useEffect(() => {
@@ -36,27 +36,26 @@ export default function FundingPage() {
         }
     };
 
-    const handleResearch = async (e: React.FormEvent<HTMLFormElement>) => {
+    const handleImport = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         const formData = new FormData(e.currentTarget);
-        setResearching(true);
+        setImporting(true);
         try {
-            const discovered = await researchOpportunities(
-                formData.get("query") as string,
-                formData.get("region") as string
+            const discovered = await importOpportunities(
+                formData.get("importText") as string
             );
             setOpportunities([...opportunities, ...discovered]);
-            setIsResearchModalOpen(false);
+            setIsImportModalOpen(false);
             if (discovered.length > 0) {
-                alert(`Found ${discovered.length} new funding opportunities!`);
+                alert(`Success! Parsed and imported ${discovered.length} opportunities.`);
             } else {
-                alert("No new opportunities found. Try different search terms.");
+                alert("No opportunities found in the text. Ensure specific details like deadline and funder are present.");
             }
         } catch (error) {
-            console.error("Research failed", error);
-            alert("Research failed. Please try again.");
+            console.error("Import failed", error);
+            alert("Import failed. Please try again.");
         } finally {
-            setResearching(false);
+            setImporting(false);
         }
     };
 
@@ -75,11 +74,11 @@ export default function FundingPage() {
                 <h1 className="text-2xl font-bold text-white">Funding Pipeline</h1>
                 <div className="flex gap-2">
                     <button
-                        onClick={() => setIsResearchModalOpen(true)}
-                        className="flex items-center gap-2 rounded-md bg-gradient-to-r from-purple-600 to-indigo-600 px-4 py-2 text-sm font-medium text-white hover:from-purple-500 hover:to-indigo-500 transition-colors"
+                        onClick={() => setIsImportModalOpen(true)}
+                        className="flex items-center gap-2 rounded-md bg-gradient-to-r from-emerald-600 to-teal-600 px-4 py-2 text-sm font-medium text-white hover:from-emerald-500 hover:to-teal-500 transition-colors"
                     >
-                        <Sparkles className="h-4 w-4" />
-                        Research Grants
+                        <ClipboardPaste className="h-4 w-4" />
+                        Import from Research
                     </button>
                     <button
                         onClick={() => setIsModalOpen(true)}
@@ -151,56 +150,45 @@ export default function FundingPage() {
                 </div>
             )}
 
-            {/* Research Modal */}
-            {isResearchModalOpen && (
+            {/* Smart Import Modal */}
+            {isImportModalOpen && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-                    <div className="w-full max-w-md rounded-xl border border-purple-500/30 bg-stone-900 p-6 shadow-xl">
+                    <div className="w-full max-w-2xl rounded-xl border border-teal-500/30 bg-stone-900 p-6 shadow-xl">
                         <div className="flex items-center gap-3 mb-4">
-                            <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-purple-500 to-indigo-500 flex items-center justify-center">
-                                <Sparkles className="h-5 w-5 text-white" />
+                            <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center">
+                                <ClipboardPaste className="h-5 w-5 text-white" />
                             </div>
                             <div>
-                                <h2 className="text-xl font-bold text-white">Research Grants</h2>
-                                <p className="text-sm text-stone-400">AI-powered grant discovery</p>
+                                <h2 className="text-xl font-bold text-white">Import from Research</h2>
+                                <p className="text-sm text-stone-400">Paste results from Gemini, ChatGPT, or emails.</p>
                             </div>
                         </div>
-                        <form onSubmit={handleResearch} className="space-y-4">
+                        <form onSubmit={handleImport} className="space-y-4">
                             <div>
-                                <label className="block text-sm font-medium text-stone-400">Search Keywords</label>
-                                <input
-                                    name="query"
-                                    defaultValue="film documentary arts grants"
+                                <label className="block text-sm font-medium text-stone-400 mb-2">Paste Research Text</label>
+                                <textarea
+                                    name="importText"
                                     required
-                                    onFocus={(e) => e.target.value = ''}
-                                    className="mt-1 w-full rounded bg-stone-950 border border-stone-800 px-3 py-2 text-stone-200 outline-none focus:border-purple-500"
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-stone-400">Region</label>
-                                <input
-                                    name="region"
-                                    defaultValue="South Africa"
-                                    required
-                                    onFocus={(e) => e.target.value = ''}
-                                    className="mt-1 w-full rounded bg-stone-950 border border-stone-800 px-3 py-2 text-stone-200 outline-none focus:border-purple-500"
+                                    placeholder="Paste your conversation with Gemini here. For example: 'Here are 5 grants I found... 1. Org Name...'"
+                                    className="mt-1 w-full h-64 rounded bg-stone-950 border border-stone-800 px-3 py-2 text-stone-200 outline-none focus:border-teal-500 font-mono text-sm resize-none"
                                 />
                             </div>
                             <div className="flex justify-end gap-2 mt-6">
-                                <button type="button" onClick={() => setIsResearchModalOpen(false)} disabled={researching} className="px-4 py-2 text-sm text-stone-400 hover:text-white disabled:opacity-50">Cancel</button>
+                                <button type="button" onClick={() => setIsImportModalOpen(false)} disabled={importing} className="px-4 py-2 text-sm text-stone-400 hover:text-white disabled:opacity-50">Cancel</button>
                                 <button
                                     type="submit"
-                                    disabled={researching}
-                                    className="flex items-center gap-2 rounded bg-gradient-to-r from-purple-600 to-indigo-600 px-4 py-2 text-sm text-white hover:from-purple-500 hover:to-indigo-500 disabled:opacity-50"
+                                    disabled={importing}
+                                    className="flex items-center gap-2 rounded bg-gradient-to-r from-emerald-600 to-teal-600 px-4 py-2 text-sm text-white hover:from-emerald-500 hover:to-teal-500 disabled:opacity-50"
                                 >
-                                    {researching ? (
+                                    {importing ? (
                                         <>
                                             <Loader2 className="h-4 w-4 animate-spin" />
-                                            Researching...
+                                            Parsing Opportunities...
                                         </>
                                     ) : (
                                         <>
-                                            <Search className="h-4 w-4" />
-                                            Find Grants
+                                            <Sparkles className="h-4 w-4" />
+                                            Parse & Import
                                         </>
                                     )}
                                 </button>

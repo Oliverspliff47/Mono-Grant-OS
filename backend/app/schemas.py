@@ -136,3 +136,9 @@ class DashboardResponse(BaseModel):
     recent_assets: List[AssetResponse]
 
     model_config = ConfigDict(from_attributes=True)
+class FundingImportRequest(BaseModel):
+    text: str
+
+class FundingResearchRequest(BaseModel):
+    query: str
+    region: str
