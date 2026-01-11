@@ -153,6 +153,17 @@ async def list_opportunities(db: AsyncSession = Depends(get_db)):
     agent = FundingAgent(db)
     return await agent.get_opportunities()
 
+@router.post("/opportunities/research", response_model=List[OpportunityResponse])
+async def research_opportunities(query: str = "film documentary arts grants", region: str = "South Africa", db: AsyncSession = Depends(get_db)):
+    """
+    Deep research to discover funding opportunities from web sources.
+    Creates new opportunities in the database and returns them.
+    """
+    agent = FundingAgent(db)
+    created = await agent.research_and_create_opportunities(query, region)
+    return created
+
+
 @router.post("/applications", response_model=ApplicationResponse, status_code=status.HTTP_201_CREATED)
 async def create_application(opportunity_id: UUID, db: AsyncSession = Depends(get_db)):
     agent = FundingAgent(db)

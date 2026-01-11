@@ -1,14 +1,16 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getOpportunities, createOpportunity, createApplication, Opportunity } from "@/lib/api";
-import { Plus, Calendar, ArrowRight } from "lucide-react";
+import { getOpportunities, createOpportunity, createApplication, researchOpportunities, Opportunity } from "@/lib/api";
+import { Plus, Calendar, ArrowRight, Search, Loader2, Sparkles } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 export default function FundingPage() {
     const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isResearchModalOpen, setIsResearchModalOpen] = useState(false);
+    const [researching, setResearching] = useState(false);
     const router = useRouter();
 
     useEffect(() => {
@@ -34,6 +36,30 @@ export default function FundingPage() {
         }
     };
 
+    const handleResearch = async (e: React.FormEvent<HTMLFormElement>) => {
+        e.preventDefault();
+        const formData = new FormData(e.currentTarget);
+        setResearching(true);
+        try {
+            const discovered = await researchOpportunities(
+                formData.get("query") as string,
+                formData.get("region") as string
+            );
+            setOpportunities([...opportunities, ...discovered]);
+            setIsResearchModalOpen(false);
+            if (discovered.length > 0) {
+                alert(`Found ${discovered.length} new funding opportunities!`);
+            } else {
+                alert("No new opportunities found. Try different search terms.");
+            }
+        } catch (error) {
+            console.error("Research failed", error);
+            alert("Research failed. Please try again.");
+        } finally {
+            setResearching(false);
+        }
+    };
+
     const handleStartApplication = async (oppId: string) => {
         try {
             const app = await createApplication(oppId);
@@ -47,13 +73,22 @@ export default function FundingPage() {
         <div className="space-y-6">
             <div className="flex items-center justify-between">
                 <h1 className="text-2xl font-bold text-white">Funding Pipeline</h1>
-                <button
-                    onClick={() => setIsModalOpen(true)}
-                    className="flex items-center gap-2 rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500 transition-colors"
-                >
-                    <Plus className="h-4 w-4" />
-                    Add Opportunity
-                </button>
+                <div className="flex gap-2">
+                    <button
+                        onClick={() => setIsResearchModalOpen(true)}
+                        className="flex items-center gap-2 rounded-md bg-gradient-to-r from-purple-600 to-indigo-600 px-4 py-2 text-sm font-medium text-white hover:from-purple-500 hover:to-indigo-500 transition-colors"
+                    >
+                        <Sparkles className="h-4 w-4" />
+                        Research Grants
+                    </button>
+                    <button
+                        onClick={() => setIsModalOpen(true)}
+                        className="flex items-center gap-2 rounded-md bg-stone-800 px-4 py-2 text-sm font-medium text-stone-200 hover:bg-stone-700 transition-colors"
+                    >
+                        <Plus className="h-4 w-4" />
+                        Add Manually
+                    </button>
+                </div>
             </div>
 
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
@@ -89,7 +124,7 @@ export default function FundingPage() {
                 )}
             </div>
 
-            {/* Simple Modal */}
+            {/* Add Opportunity Modal */}
             {isModalOpen && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
                     <div className="w-full max-w-md rounded-xl border border-stone-800 bg-stone-900 p-6 shadow-xl">
@@ -115,6 +150,64 @@ export default function FundingPage() {
                     </div>
                 </div>
             )}
+
+            {/* Research Modal */}
+            {isResearchModalOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+                    <div className="w-full max-w-md rounded-xl border border-purple-500/30 bg-stone-900 p-6 shadow-xl">
+                        <div className="flex items-center gap-3 mb-4">
+                            <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-purple-500 to-indigo-500 flex items-center justify-center">
+                                <Sparkles className="h-5 w-5 text-white" />
+                            </div>
+                            <div>
+                                <h2 className="text-xl font-bold text-white">Research Grants</h2>
+                                <p className="text-sm text-stone-400">AI-powered grant discovery</p>
+                            </div>
+                        </div>
+                        <form onSubmit={handleResearch} className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-stone-400">Search Keywords</label>
+                                <input
+                                    name="query"
+                                    defaultValue="film documentary arts grants"
+                                    required
+                                    className="mt-1 w-full rounded bg-stone-950 border border-stone-800 px-3 py-2 text-stone-200 outline-none focus:border-purple-500"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-stone-400">Region</label>
+                                <input
+                                    name="region"
+                                    defaultValue="South Africa"
+                                    required
+                                    className="mt-1 w-full rounded bg-stone-950 border border-stone-800 px-3 py-2 text-stone-200 outline-none focus:border-purple-500"
+                                />
+                            </div>
+                            <div className="flex justify-end gap-2 mt-6">
+                                <button type="button" onClick={() => setIsResearchModalOpen(false)} disabled={researching} className="px-4 py-2 text-sm text-stone-400 hover:text-white disabled:opacity-50">Cancel</button>
+                                <button
+                                    type="submit"
+                                    disabled={researching}
+                                    className="flex items-center gap-2 rounded bg-gradient-to-r from-purple-600 to-indigo-600 px-4 py-2 text-sm text-white hover:from-purple-500 hover:to-indigo-500 disabled:opacity-50"
+                                >
+                                    {researching ? (
+                                        <>
+                                            <Loader2 className="h-4 w-4 animate-spin" />
+                                            Researching...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Search className="h-4 w-4" />
+                                            Find Grants
+                                        </>
+                                    )}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
+

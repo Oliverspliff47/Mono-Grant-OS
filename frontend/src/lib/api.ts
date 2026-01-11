@@ -234,6 +234,15 @@ export async function getOpportunities(): Promise<Opportunity[]> {
     return await res.json();
 }
 
+export async function researchOpportunities(query: string = "film documentary arts grants", region: string = "South Africa"): Promise<Opportunity[]> {
+    const res = await fetch(`${API_BASE_URL}/opportunities/research?query=${encodeURIComponent(query)}&region=${encodeURIComponent(region)}`, {
+        method: "POST",
+    });
+    if (!res.ok) throw new Error("Research failed");
+    return await res.json();
+}
+
+
 export async function createApplication(opportunityId: string): Promise<ApplicationPackage> {
     const res = await fetch(`${API_BASE_URL}/applications?opportunity_id=${opportunityId}`, {
         method: "POST",
