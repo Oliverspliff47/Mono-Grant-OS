@@ -125,15 +125,11 @@ class ApplicationUpdate(BaseModel):
     submission_status: Optional[SubmissionStatusEnum] = None
 
 class DashboardCounts(BaseModel):
-    projects: int
     opportunities: int
-    assets: int
 
 class DashboardResponse(BaseModel):
     counts: DashboardCounts
-    recent_projects: List[ProjectResponse]
     upcoming_deadlines: List[OpportunityResponse]
-    recent_assets: List[AssetResponse]
 
     model_config = ConfigDict(from_attributes=True)
 class FundingImportRequest(BaseModel):

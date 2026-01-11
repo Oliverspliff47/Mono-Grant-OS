@@ -7,11 +7,7 @@ import { LayoutDashboard, FolderOpen, Archive, Banknote, Settings, Printer, Laye
 
 const navigation = [
     { name: "Dashboard", href: "/", icon: LayoutDashboard },
-    { name: "Projects", href: "/projects", icon: FolderOpen },
-    { name: "Editorial", href: "/editorial", icon: Layers },
-    { name: "Archives", href: "/archives", icon: Archive },
     { name: "Funding", href: "/funding", icon: Banknote },
-    { name: "Production", href: "/production", icon: Printer },
     { name: "Settings", href: "/settings", icon: Settings },
 ];
 
