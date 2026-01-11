@@ -3,78 +3,103 @@ from sqlalchemy.future import select
 from app.models import FundingOpportunity, ApplicationPackage, FundingStatus, SubmissionStatus
 import uuid
 from datetime import date, timedelta
-import httpx
 import json
 import re
+import os
+import google.generativeai as genai
 
 class FundingAgent:
     def __init__(self, db_session: AsyncSession):
         self.db = db_session
+        # Configure Gemini
+        api_key = os.getenv("GEMINI_API_KEY")
+        if api_key:
+            genai.configure(api_key=api_key)
 
     async def research_opportunities(self, query: str = "film documentary arts grants funding", region: str = "South Africa") -> list[dict]:
         """
-        Deep research to find funding opportunities via web search.
+        Deep research to find funding opportunities using Gemini AI with grounded search.
         Returns a list of discovered opportunities.
         """
-        search_query = f"{query} {region} grants funding opportunities 2026"
+        api_key = os.getenv("GEMINI_API_KEY")
+        if not api_key:
+            print("GEMINI_API_KEY not set, falling back to empty results")
+            return []
         
-        # Use a free search API (DuckDuckGo instant answers)
         try:
-            async with httpx.AsyncClient(timeout=30.0) as client:
-                # DuckDuckGo instant answer API
-                response = await client.get(
-                    "https://api.duckduckgo.com/",
-                    params={
-                        "q": search_query,
-                        "format": "json",
-                        "no_html": "1",
-                        "skip_disambig": "1"
-                    }
-                )
-                data = response.json()
+            # Use Gemini with search grounding for deep research
+            model = genai.GenerativeModel(
+                model_name="gemini-2.0-flash",
+                system_instruction="""You are a funding research specialist. Your task is to find real, current funding opportunities for filmmakers, documentarians, and artists.
+
+When researching, look for:
+- Government arts councils and cultural funds
+- Private foundations supporting film/documentary
+- International film funds
+- Arts grants and fellowships
+- Documentary-specific funding programs
+
+For each opportunity found, extract:
+1. Funder name (organization providing the funding)
+2. Programme name (specific grant or fund name)
+3. Deadline if known (or estimate "Q1/Q2/Q3/Q4 2026" if unclear)
+4. Brief description
+
+Return your findings as a JSON array with objects containing: funder_name, programme_name, deadline_estimate, description, source_url (if known)
+
+Be thorough and find at least 5-10 relevant opportunities. Focus on currently active programs."""
+            )
+            
+            # Enable search grounding for real-time web research
+            research_prompt = f"""Research current funding opportunities for: {query}
+
+Focus on region: {region}
+
+Search for active grants, funds, and fellowships that filmmakers, documentarians, and artists can apply to in 2026.
+
+Find real opportunities with actual deadlines and application processes. Include both local ({region}) and international opportunities that accept applications from {region}.
+
+Return the results as a JSON array."""
+
+            response = model.generate_content(
+                research_prompt,
+                tools="google_search_retrieval"
+            )
+            
+            # Parse the response
+            response_text = response.text
+            
+            # Extract JSON from response
+            json_match = re.search(r'\[[\s\S]*\]', response_text)
+            if json_match:
+                results = json.loads(json_match.group())
                 
-                results = []
-                
-                # Parse related topics for potential opportunities
-                related = data.get("RelatedTopics", [])
-                for topic in related[:10]:  # Limit to 10 results
-                    if isinstance(topic, dict) and "Text" in topic:
-                        text = topic.get("Text", "")
-                        url = topic.get("FirstURL", "")
-                        
-                        # Extract a funder name and programme from the text
-                        if text:
-                            # Simple heuristic: first part before dash or colon is funder
-                            parts = re.split(r'[-–:]', text, maxsplit=1)
-                            funder = parts[0].strip()[:100] if parts else "Unknown Funder"
-                            programme = parts[1].strip()[:200] if len(parts) > 1 else text[:200]
-                            
-                            results.append({
-                                "funder_name": funder,
-                                "programme_name": programme,
-                                "source_url": url,
-                                "raw_text": text
-                            })
-                
-                # Also check abstract for opportunities
-                abstract = data.get("Abstract", "")
-                if abstract and len(results) < 5:
-                    results.append({
-                        "funder_name": data.get("Heading", "Research Result"),
-                        "programme_name": abstract[:300],
-                        "source_url": data.get("AbstractURL", ""),
-                        "raw_text": abstract
+                # Normalize the results
+                normalized = []
+                for item in results:
+                    normalized.append({
+                        "funder_name": str(item.get("funder_name", item.get("funder", "Unknown")))[:100],
+                        "programme_name": str(item.get("programme_name", item.get("programme", item.get("name", "Grant Program"))))[:200],
+                        "deadline_estimate": str(item.get("deadline_estimate", item.get("deadline", "2026")))[:50],
+                        "description": str(item.get("description", ""))[:500],
+                        "source_url": str(item.get("source_url", item.get("url", "")))[:500]
                     })
-                
-                return results
+                return normalized
+            else:
+                print(f"Could not parse JSON from Gemini response: {response_text[:500]}")
+                return []
                 
         except Exception as e:
-            print(f"Research error: {e}")
+            print(f"Gemini research error: {e}")
+            import traceback
+            traceback.print_exc()
             return []
+
 
     async def research_and_create_opportunities(self, query: str = "film documentary arts grants", region: str = "South Africa") -> list[FundingOpportunity]:
         """
         Research opportunities and automatically create them in the database.
+        Uses Gemini AI with grounded search for deep research.
         """
         research_results = await self.research_opportunities(query, region)
         created = []
@@ -97,8 +122,12 @@ class FundingAgent:
                 programme_name=result["programme_name"][:200],
                 deadline=default_deadline,
                 status=FundingStatus.TO_REVIEW,
-                eligibility_criteria={"source": result.get("source_url", "")},
-                budget_rules={"notes": "Sourced via research - verify details"}
+                eligibility_criteria={
+                    "source": result.get("source_url", ""),
+                    "description": result.get("description", ""),
+                    "deadline_estimate": result.get("deadline_estimate", "")
+                },
+                budget_rules={"notes": "Sourced via Gemini AI research - verify details before applying"}
             )
             self.db.add(opportunity)
             created.append(opportunity)
