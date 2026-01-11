@@ -38,6 +38,18 @@ async def get_project(project_id: UUID, db: AsyncSession = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Project not found")
     return project
 
+@router.delete("/projects/clear", status_code=status.HTTP_204_NO_CONTENT)
+async def clear_all_projects(db: AsyncSession = Depends(get_db)):
+    """Delete all projects and their related data (sections, assets, etc)"""
+    # Delete in order to respect foreign keys
+    await db.execute(models.Asset.__table__.delete())
+    await db.execute(models.Section.__table__.delete())
+    await db.execute(models.ApplicationPackage.__table__.delete())
+    await db.execute(models.Opportunity.__table__.delete())
+    await db.execute(models.Project.__table__.delete())
+    await db.commit()
+    return None
+
 # --- Section Endpoints ---
 
 @router.post("/projects/{project_id}/sections", response_model=SectionResponse, status_code=status.HTTP_201_CREATED)

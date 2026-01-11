@@ -33,6 +33,13 @@ export async function createProject(data: { title: string; start_date?: string }
     return await res.json();
 }
 
+export async function clearAllProjects(): Promise<void> {
+    const res = await fetch(`${API_BASE_URL}/projects/clear`, {
+        method: "DELETE",
+    });
+    if (!res.ok) throw new Error("Failed to clear projects");
+}
+
 export async function getProject(id: string): Promise<Project | null> {
     try {
         const res = await fetch(`${API_BASE_URL}/projects/${id}`);
