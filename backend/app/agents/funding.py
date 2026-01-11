@@ -23,8 +23,13 @@ class FundingAgent:
         """
         api_key = os.getenv("GEMINI_API_KEY")
         if not api_key:
-            print("GEMINI_API_KEY not set, falling back to empty results")
-            return []
+            return [{
+                "funder_name": "DEBUG_ERROR",
+                "programme_name": "Error: GEMINI_API_KEY not set in environment",
+                "deadline_estimate": "2026",
+                "description": "Please check Railway variables",
+                "source_url": ""
+            }]
         
         try:
             # Use Gemini with search grounding for deep research
