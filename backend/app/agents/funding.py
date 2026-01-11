@@ -20,7 +20,7 @@ class FundingAgent:
         if api_key:
             genai.configure(api_key=api_key)
 
-    async def _scrape_ddg(self, query: str) -> list[dict]:
+    def _scrape_ddg(self, query: str) -> list[dict]:
         """Manual scraping of DuckDuckGo HTML version to avoid library issues."""
         print(f"Scraping DDG for: {query}")
         url = "https://html.duckduckgo.com/html/"
