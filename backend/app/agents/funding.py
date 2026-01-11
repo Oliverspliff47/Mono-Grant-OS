@@ -93,7 +93,14 @@ Return the results as a JSON array."""
             print(f"Gemini research error: {e}")
             import traceback
             traceback.print_exc()
-            return []
+            # DEBUG: Return error as result
+            return [{
+                "funder_name": "DEBUG_ERROR",
+                "programme_name": f"Error: {str(e)}",
+                "deadline_estimate": "2026",
+                "description": "Debug error message",
+                "source_url": ""
+            }]
 
 
     async def research_and_create_opportunities(self, query: str = "film documentary arts grants", region: str = "South Africa") -> list[FundingOpportunity]:
