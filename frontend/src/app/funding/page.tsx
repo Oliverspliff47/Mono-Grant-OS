@@ -171,6 +171,7 @@ export default function FundingPage() {
                                     name="query"
                                     defaultValue="film documentary arts grants"
                                     required
+                                    onFocus={(e) => e.target.value = ''}
                                     className="mt-1 w-full rounded bg-stone-950 border border-stone-800 px-3 py-2 text-stone-200 outline-none focus:border-purple-500"
                                 />
                             </div>
@@ -180,6 +181,7 @@ export default function FundingPage() {
                                     name="region"
                                     defaultValue="South Africa"
                                     required
+                                    onFocus={(e) => e.target.value = ''}
                                     className="mt-1 w-full rounded bg-stone-950 border border-stone-800 px-3 py-2 text-stone-200 outline-none focus:border-purple-500"
                                 />
                             </div>
