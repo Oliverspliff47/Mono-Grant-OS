@@ -168,6 +168,7 @@ class FundingAgent:
 
         except Exception as e:
             print(f"Gemini Text Parsing failed: {e}")
+            print(f"Raw Response Text: {response.text}") # Debug log
             import traceback
             traceback.print_exc()
             return []
