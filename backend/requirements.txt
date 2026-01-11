@@ -14,4 +14,5 @@ greenlet
 pytest
 pytest-asyncio
 google-generativeai
-duckduckgo-search
+beautifulsoup4
+requests

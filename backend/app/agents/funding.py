@@ -7,7 +7,10 @@ import json
 import re
 import os
 import google.generativeai as genai
-from duckduckgo_search import DDGS
+import requests
+from bs4 import BeautifulSoup
+import httpx # Use httpx for async requests if preferred, using requests for sync compatibility inside async func
+import asyncio
 
 class FundingAgent:
     def __init__(self, db_session: AsyncSession):
@@ -17,10 +20,48 @@ class FundingAgent:
         if api_key:
             genai.configure(api_key=api_key)
 
+    async def _scrape_ddg(self, query: str) -> list[dict]:
+        """Manual scraping of DuckDuckGo HTML version to avoid library issues."""
+        print(f"Scraping DDG for: {query}")
+        url = "https://html.duckduckgo.com/html/"
+        data = {"q": query}
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+        }
+        
+        try:
+            # We use sync requests here but wrap in thread if needed, or just block briefly
+            # Given the agent nature, blocking for 1-2s is acceptable
+            response = requests.post(url, data=data, headers=headers, timeout=15)
+            
+            if response.status_code != 200:
+                print(f"DDG Non-200 Status: {response.status_code}")
+                return []
+                
+            soup = BeautifulSoup(response.text, "html.parser")
+            results = []
+            
+            for result in soup.find_all("div", class_="result"):
+                title_tag = result.find("a", class_="result__a")
+                snippet_tag = result.find("a", class_="result__snippet")
+                
+                if title_tag and snippet_tag:
+                    results.append({
+                        "title": title_tag.get_text(strip=True),
+                        "href": title_tag["href"],
+                        "body": snippet_tag.get_text(strip=True)
+                    })
+            
+            return results[:10] # Return top 10
+            
+        except Exception as e:
+            print(f"DDG Scraping Error: {e}")
+            return []
+
     async def research_opportunities(self, query: str = "film documentary arts grants funding", region: str = "South Africa") -> list[dict]:
         """
         Deep research using Hybrid approach:
-        1. Search via DuckDuckGo (Free, Unlimited)
+        1. Custom Scrape of DuckDuckGo (Robust)
         2. Parse & Extract via Gemini Flash (Free Tier Friendly)
         """
         api_key = os.getenv("GEMINI_API_KEY")
@@ -30,37 +71,19 @@ class FundingAgent:
             
         print(f"Hybrid Research: Searching for '{query}' in '{region}'...")
         
-        # Step 1: Free Web Search
-        search_results = []
-        try:
-            with DDGS() as ddgs:
-                full_query = f"{query} {region} grants funding opportunities 2026 application"
-                # Get more results to ensure content
-                ddg_results = list(ddgs.text(full_query, max_results=8))
-                
-                context_text = ""
-                for r in ddg_results:
-                    context_text += f"\nSOURCE: {r['title']}\nURL: {r['href']}\nCONTENT: {r['body']}\n"
-                    search_results.append(r)
-                    
-        except Exception as e:
-            print(f"DuckDuckGo Search failed: {e}")
-            return [{
-                "funder_name": "DEBUG_ERROR",
-                "programme_name": f"DDG Search Error: {str(e)}",
-                "deadline_estimate": "2026",
-                "description": "DuckDuckGo search failed",
-                "source_url": ""
-            }]
+        # Step 1: Free Web Search (Scraping)
+        full_query = f"{query} {region} grants funding opportunities 2026 application"
+        
+        # Run sync scraping in thread to avoid blocking event loop
+        search_results = await asyncio.to_thread(self._scrape_ddg, full_query)
+        
+        context_text = ""
+        for r in search_results:
+            context_text += f"\nSOURCE: {r['title']}\nURL: {r['href']}\nCONTENT: {r['body']}\n"
 
         if not context_text:
-            return [{
-                "funder_name": "DEBUG_ERROR",
-                "programme_name": "Error: No search results found",
-                "deadline_estimate": "2026",
-                "description": "DuckDuckGo returned no results",
-                "source_url": ""
-            }]
+            print("No search results found to analyze.")
+            return [] # Fail silently/gracefully
 
         # Step 2: Intelligent Extraction with Gemini
         try:
@@ -86,7 +109,7 @@ class FundingAgent:
             Return strictly a JSON array of objects. No markdown formatting.
             """
             
-            response = model.generate_content(prompt)
+            response = await asyncio.to_thread(model.generate_content, prompt)
             clean_text = response.text.strip().replace("```json", "").replace("```", "")
             
             data = json.loads(clean_text)
@@ -94,13 +117,9 @@ class FundingAgent:
 
         except Exception as e:
             print(f"Gemini Extraction failed: {e}")
-            return [{
-                "funder_name": "DEBUG_ERROR",
-                "programme_name": f"Gemini Extraction Error: {str(e)}",
-                "deadline_estimate": "2026",
-                "description": "Gemini failed to parse",
-                "source_url": ""
-            }]
+            import traceback
+            traceback.print_exc()
+            return []
 
 
     async def research_and_create_opportunities(self, query: str = "film documentary arts grants", region: str = "South Africa") -> list[FundingOpportunity]:
