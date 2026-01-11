@@ -139,10 +139,10 @@ class FundingAgent:
             
             prompt = f"""You are an expert funding data analyst.
             
-            I am providing raw text that contains funding opportunities (e.g. from an email, chat log, or list).
+            I am providing raw text/content that contains funding opportunities (e.g. from an email, chat log, PDF, or list).
             Your job is to specific extract funding opportunities into a structured JSON array.
             
-            RAW TEXT:
+            RAW CONTENT:
             {text[:30000]}  # Limit context window just in case
             
             INSTRUCTIONS:
@@ -153,6 +153,8 @@ class FundingAgent:
             - deadline_estimate (e.g. "Late 2026", "Open", "April 15")
             - description (summary of what it funds)
             - source_url (if mentioned in the text, otherwise empty)
+            - requirements (list of eligibility strings, e.g. ["Must be over 18", "Resident of SA"])
+            - required_documents (list of docs needed, e.g. ["CV", "Budget", "Script"])
             
             If the text contains no opportunities, return an empty array [].
             Return strictly a JSON array of objects. No markdown formatting.
@@ -199,7 +201,9 @@ class FundingAgent:
                 eligibility_criteria={
                     "source": result.get("source_url", ""),
                     "description": result.get("description", ""),
-                    "deadline_estimate": result.get("deadline_estimate", "")
+                    "deadline_estimate": result.get("deadline_estimate", ""),
+                    "requirements": result.get("requirements", []),
+                    "required_documents": result.get("required_documents", [])
                 },
                 budget_rules={"notes": "Imported via Smart Import"}
             )
@@ -212,6 +216,40 @@ class FundingAgent:
                 await self.db.refresh(opp)
         
         return created
+
+    async def import_file(self, file_contents: bytes, filename: str) -> list[FundingOpportunity]:
+        """
+        Import funding opportunities from an uploaded file (PDF or Text).
+        """
+        text = ""
+        filename_lower = filename.lower()
+        
+        print(f"Smart Import: Processing file '{filename}'...")
+
+        try:
+            if filename_lower.endswith(".pdf"):
+                import io
+                from pypdf import PdfReader
+                
+                # Reading PDF logic
+                pdf_file = io.BytesIO(file_contents)
+                reader = PdfReader(pdf_file)
+                for page in reader.pages:
+                    text += page.extract_text() + "\n"
+                    
+            else:
+                # Assume text/markdown/html
+                text = file_contents.decode("utf-8", errors="ignore")
+            
+            if not text.strip():
+                print("Extracted text is empty.")
+                return []
+                
+            return await self.import_opportunities_from_text(text)
+            
+        except Exception as e:
+            print(f"File Parsing Error: {e}")
+            raise e
 
     async def create_opportunity(self, funder_name: str, programme_name: str, deadline: date) -> FundingOpportunity:
         """Create a new funding opportunity."""

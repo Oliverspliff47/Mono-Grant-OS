@@ -252,6 +252,18 @@ export async function importOpportunities(text: string): Promise<Opportunity[]> 
     return await res.json();
 }
 
+export async function importOpportunitiesFile(file: File): Promise<Opportunity[]> {
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const res = await fetch(`${API_BASE_URL}/opportunities/import/file`, {
+        method: "POST",
+        body: formData,
+    });
+    if (!res.ok) throw new Error("File import failed");
+    return await res.json();
+}
+
 
 export async function createApplication(opportunityId: string): Promise<ApplicationPackage> {
     const res = await fetch(`${API_BASE_URL}/applications?opportunity_id=${opportunityId}`, {

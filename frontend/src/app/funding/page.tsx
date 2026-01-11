@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getOpportunities, createOpportunity, createApplication, importOpportunities, Opportunity } from "@/lib/api";
-import { Plus, Calendar, ArrowRight, Search, Loader2, Sparkles, ClipboardPaste } from "lucide-react";
+import { getOpportunities, createOpportunity, createApplication, importOpportunities, importOpportunitiesFile, Opportunity } from "@/lib/api";
+import { Plus, Calendar, ArrowRight, Search, Loader2, Sparkles, ClipboardPaste, UploadCloud } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 export default function FundingPage() {
@@ -11,6 +11,7 @@ export default function FundingPage() {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isImportModalOpen, setIsImportModalOpen] = useState(false);
     const [importing, setImporting] = useState(false);
+    const [dragActive, setDragActive] = useState(false);
     const router = useRouter();
 
     useEffect(() => {
@@ -44,18 +45,57 @@ export default function FundingPage() {
             const discovered = await importOpportunities(
                 formData.get("importText") as string
             );
-            setOpportunities([...opportunities, ...discovered]);
-            setIsImportModalOpen(false);
-            if (discovered.length > 0) {
-                alert(`Success! Parsed and imported ${discovered.length} opportunities.`);
-            } else {
-                alert("No opportunities found in the text. Ensure specific details like deadline and funder are present.");
-            }
+            handleImportSuccess(discovered);
         } catch (error) {
             console.error("Import failed", error);
             alert("Import failed. Please try again.");
         } finally {
             setImporting(false);
+        }
+    };
+
+    const handleImportFile = async (files: FileList | null) => {
+        if (!files || files.length === 0) return;
+        const file = files[0];
+
+        setImporting(true);
+        try {
+            const discovered = await importOpportunitiesFile(file);
+            handleImportSuccess(discovered);
+        } catch (error) {
+            console.error("File Import failed", error);
+            alert("File Import failed. Please try again.");
+        } finally {
+            setImporting(false);
+        }
+    };
+
+    const handleImportSuccess = (discovered: Opportunity[]) => {
+        setOpportunities([...opportunities, ...discovered]);
+        setIsImportModalOpen(false);
+        if (discovered.length > 0) {
+            alert(`Success! Parsed and imported ${discovered.length} opportunities.`);
+        } else {
+            alert("No opportunities found using Gemini parsing. Ensure the content is clear.");
+        }
+    };
+
+    const handleDrag = (e: React.DragEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (e.type === "dragenter" || e.type === "dragover") {
+            setDragActive(true);
+        } else if (e.type === "dragleave") {
+            setDragActive(false);
+        }
+    };
+
+    const handleDrop = (e: React.DragEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setDragActive(false);
+        if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+            handleImportFile(e.dataTransfer.files);
         }
     };
 
@@ -160,17 +200,48 @@ export default function FundingPage() {
                             </div>
                             <div>
                                 <h2 className="text-xl font-bold text-white">Import from Research</h2>
-                                <p className="text-sm text-stone-400">Paste results from Gemini, ChatGPT, or emails.</p>
+                                <p className="text-sm text-stone-400">Paste text or upload a document (PDF/Text) to extract opportunities.</p>
                             </div>
                         </div>
+
+                        {/* File Upload Zone */}
+                        <div
+                            className={`mb-6 flex flex-col items-center justify-center rounded-lg border-2 border-dashed p-6 transition-colors ${dragActive ? 'border-teal-500 bg-teal-500/10' : 'border-stone-800 bg-stone-950/50 hover:border-stone-700'}`}
+                            onDragEnter={handleDrag}
+                            onDragLeave={handleDrag}
+                            onDragOver={handleDrag}
+                            onDrop={handleDrop}
+                        >
+                            <UploadCloud className="mb-2 h-8 w-8 text-stone-500" />
+                            <p className="mb-2 text-sm text-stone-400">
+                                <span className="font-semibold text-teal-500">Click to upload</span> or drag and drop
+                            </p>
+                            <p className="text-xs text-stone-500">PDF, TXT, or MD (max 10MB)</p>
+                            <input
+                                type="file"
+                                className="hidden"
+                                accept=".pdf,.txt,.md"
+                                id="file-upload"
+                                onChange={(e) => handleImportFile(e.target.files)}
+                            />
+                            <label htmlFor="file-upload" className="absolute inset-0 cursor-pointer" />
+                        </div>
+
+                        <div className="relative mb-4">
+                            <div className="absolute inset-0 flex items-center">
+                                <span className="w-full border-t border-stone-800" />
+                            </div>
+                            <div className="relative flex justify-center text-xs uppercase">
+                                <span className="bg-stone-900 px-2 text-stone-500">Or paste text</span>
+                            </div>
+                        </div>
+
                         <form onSubmit={handleImport} className="space-y-4">
                             <div>
-                                <label className="block text-sm font-medium text-stone-400 mb-2">Paste Research Text</label>
                                 <textarea
                                     name="importText"
-                                    required
                                     placeholder="Paste your conversation with Gemini here. For example: 'Here are 5 grants I found... 1. Org Name...'"
-                                    className="mt-1 w-full h-64 rounded bg-stone-950 border border-stone-800 px-3 py-2 text-stone-200 outline-none focus:border-teal-500 font-mono text-sm resize-none"
+                                    className="mt-1 w-full h-32 rounded bg-stone-950 border border-stone-800 px-3 py-2 text-stone-200 outline-none focus:border-teal-500 font-mono text-sm resize-none"
                                 />
                             </div>
                             <div className="flex justify-end gap-2 mt-6">
@@ -183,7 +254,7 @@ export default function FundingPage() {
                                     {importing ? (
                                         <>
                                             <Loader2 className="h-4 w-4 animate-spin" />
-                                            Parsing Opportunities...
+                                            Parsing...
                                         </>
                                     ) : (
                                         <>

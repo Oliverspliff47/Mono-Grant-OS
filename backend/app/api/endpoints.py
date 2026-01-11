@@ -171,6 +171,17 @@ async def import_opportunities(payload: schemas.FundingImportRequest, db: AsyncS
     agent = FundingAgent(db)
     return await agent.import_opportunities_from_text(payload.text)
 
+from fastapi import UploadFile, File
+
+@router.post("/opportunities/import/file", response_model=List[OpportunityResponse])
+async def import_opportunities_file(file: UploadFile = File(...), db: AsyncSession = Depends(get_db)):
+    """
+    Import funding opportunities from an uploaded file (PDF/Text).
+    """
+    agent = FundingAgent(db)
+    contents = await file.read()
+    return await agent.import_file(contents, file.filename)
+
 
 @router.post("/applications", response_model=ApplicationResponse, status_code=status.HTTP_201_CREATED)
 async def create_application(opportunity_id: UUID, db: AsyncSession = Depends(get_db)):

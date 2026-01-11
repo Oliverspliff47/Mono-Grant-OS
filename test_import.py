@@ -48,5 +48,35 @@ def test_import():
     except Exception as e:
         print(f"❌ ERROR: {e}")
 
+def test_import_file():
+    API_FILE_URL = "https://mono-grant-os-production.up.railway.app/api/v1/opportunities/import/file"
+    print(f"\nTesting Smart Import FILE API at: {API_FILE_URL}")
+    print("-" * 50)
+    
+    # Create a dummy PDF-like text file
+    files = {
+        'file': ('test_grants.txt', SAMPLE_TEXT, 'text/plain')
+    }
+    
+    try:
+        response = requests.post(API_FILE_URL, files=files)
+        
+        if response.status_code == 200:
+            results = response.json()
+            print(f"✅ SUCCESS! Imported {len(results)} opportunities from FILE:")
+            for item in results:
+                print(f"\n[ Opportunity ID: {item['id']} ]")
+                print(f"  - Program: {item['programme_name']}")
+                print(f"  - Funder: {item['funder_name']}")
+                print(f"  - Requirements: {item['eligibility_criteria'].get('requirements')}")
+                print(f"  - Required Docs: {item['eligibility_criteria'].get('required_documents')}")
+        else:
+            print(f"❌ FAILED. Status: {response.status_code}")
+            print(f"Response: {response.text}")
+            
+    except Exception as e:
+        print(f"❌ ERROR: {e}")
+
 if __name__ == "__main__":
     test_import()
+    test_import_file()
