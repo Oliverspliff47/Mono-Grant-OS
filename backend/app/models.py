@@ -9,6 +9,18 @@ from app.core.database import Base
 # Models
 # Project, Section, Asset models removed for Funding OS pivot
 
+class FundingStatus(str, enum.Enum):
+    TO_REVIEW = "To Review"
+    PURSUING = "Pursuing"
+    SUBMITTED = "Submitted"
+    REJECTED = "Rejected"
+    AWARDED = "Awarded"
+
+class SubmissionStatus(str, enum.Enum):
+    DRAFT = "Draft"
+    APPROVED = "Approved"
+    SUBMITTED = "Submitted"
+
 class FundingOpportunity(Base):
     __tablename__ = "funding_opportunities"
 
