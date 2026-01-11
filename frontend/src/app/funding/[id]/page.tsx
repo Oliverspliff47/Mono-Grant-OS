@@ -167,7 +167,7 @@ Include:
                             <span className="text-sm font-medium text-stone-300">Budget Builder</span>
                         </div>
                         <span className="text-xs font-mono text-stone-500">
-                            Total: ${Object.values(JSON.parse(budgetJson || "{}")).reduce((a: any, b: any) => a + (Number(b) || 0), 0).toLocaleString()}
+                            Total: ${Object.values(JSON.parse(budgetJson || "{}") as Record<string, any>).reduce((a: any, b: any) => a + (Number(b) || 0), 0).toLocaleString()}
                         </span>
                     </div>
                     <div className="flex-1 p-4 space-y-4 overflow-y-auto">
